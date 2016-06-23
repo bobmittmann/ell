@@ -428,6 +428,7 @@ void usage(FILE * f, char * prog)
 	fprintf(f, "\n");
 	fprintf(f, "  -?     \tShow this help message\n");
 	fprintf(f, "  -o FILE\toutput\n");
+	fprintf(f, "  -p NAME\tuse NAME as prefix for globals\n");
 	fprintf(f, "  -v[v]  \tVerbosity level\n");
 	fprintf(f, "  -V     \tPrint version\n");
 	fprintf(f, "  -l     \tprint symbols and BNF grammar rules to stdout\n");
@@ -456,6 +457,7 @@ int main(int argc,  char **argv)
 	char * prog;
 
 	char prefix[256];
+	bool prefix_set = false;
 
 	char outname[256];
 
@@ -486,7 +488,7 @@ int main(int argc,  char **argv)
 		prog = argv[0];
 
 	/* parse the command line options */
-	while ((c = getopt(argc, argv, "V?vretchlsod:")) > 0) {
+	while ((c = getopt(argc, argv, "V?vretcdhlso:p:")) > 0) {
 		switch (c) {
 		case 'V':
 			version(prog);
@@ -537,6 +539,11 @@ int main(int argc,  char **argv)
 			output_set = true;
 			break;
 
+		case 'p':
+			strcpy(prefix, optarg);
+			prefix_set = true;
+			break;
+
 
 		default:
 			fprintf(stderr, "%s: invalid option %s\n", prog, optarg);
@@ -571,25 +578,54 @@ int main(int argc,  char **argv)
 		if (tgen) 
 			strcpy(tfname, outname);
 
-		if (hgen) 
+		if (hgen) {
 			strcpy(hfname, outname);
+			if (!prefix_set) {
+				/* No prefix from the command line, use the .h filename */
+				char * cp;
+				strcpy(prefix, basename(hfname));
+				/* strip the file extension */
+				if ((cp = strrchr(prefix, '.')) != NULL)
+					*cp = '\0';
+				/* strip a possible "_ll" suffix" */
+				if ((cp = strstr(prefix, "_ll")) != NULL && 
+					strlen(cp) == 3)
+					*cp = '\0';
+			}
+		}
 
 		if (cgen)  {
 			char * cp;
 			strcpy(cfname, outname);
-			/* strip the file extension */
-			strcpy(prefix, basename(outname));
-			if ((cp = strrchr(prefix, '.')) != NULL)
+			/* Assume the header file to be included in the .C file has 
+			   the same name as the .C file */
+			strcpy(hfname, basename(cfname));
+				/* strip the file extension */
+			if ((cp = strrchr(hfname, '.')) != NULL)
 				*cp = '\0';
-			strcpy(hfname, prefix);
 			strcat(hfname, ".h" );
+
+			if (!prefix_set) {
+				/* No prefix from the command line, use the c filename */
+				strcpy(prefix, basename(cfname));
+				/* strip the file extension */
+				if ((cp = strrchr(prefix, '.')) != NULL)
+					*cp = '\0';
+				/* strip a possible "_ll" suffix" */
+				if ((cp = strstr(prefix, "_ll")) != NULL && 
+					strlen(cp) == 3)
+					*cp = '\0';
+			}
 		}
 	} else { 
-		char * cp;
-		/* strip the file extension */
-		strcpy(prefix, basename(filename));
-		if ((cp = strrchr(prefix, '.')) != NULL)
-			*cp = '\0';
+		if (!prefix_set) {
+			/* No prefix from the command line, use the input filename */
+			char * cp;
+			/* strip the file extension */
+			strcpy(prefix, basename(filename));
+			if ((cp = strrchr(prefix, '.')) != NULL)
+				*cp = '\0';
+		}
 
 		if (!cgen && !hgen) {
 			cgen = true;
@@ -638,6 +674,7 @@ int main(int argc,  char **argv)
 
 	if (conflict & CLP_CONFLICT) {	
 		fprintf(stderr, "\nUsing default choice.\n");
+		fflush(stderr);
 	}
 
 	if (tgen) {
@@ -659,8 +696,10 @@ int main(int argc,  char **argv)
 	}
 
 	if (cgen) {
-		if (verbose)
+		if (verbose) {
 			printf(" - creating C file: \"%s\"\n", cfname);
+			fflush(stdout);
+		}
 		if ((cf = fopen(cfname, "w")) == NULL) {
 			fprintf(stderr, "ERROR: creating file \"%s\": %s\n", 
 					cfname, strerror(errno));  
@@ -669,8 +708,10 @@ int main(int argc,  char **argv)
 	}
 
 	if (hgen) {
-		if (verbose)
+		if (verbose) {
 			printf(" - creating C header file: \"%s\"\n", hfname);
+			fflush(stdout);
+		}
 		if ((hf = fopen(hfname, "w")) == NULL) {
 			fprintf(stderr, "ERROR: creating file \"%s\": %s\n", 
 					hfname, strerror(errno));  
@@ -679,11 +720,15 @@ int main(int argc,  char **argv)
 	}
 
 	if (rdp) {
-		if (verbose)
+		if (verbose) {
 			printf(" - recursive descent parser generation.\n");
+			fflush(stdout);
+		}
 	} else {
-		if (verbose)
-			printf(" - embedded predictive parser tebales generation.\n");
+		if (verbose) {
+			printf(" - embedded predictive parser tables generation.\n");
+			fflush(stdout);
+		}
 	}
 
 	if (rdp) {
