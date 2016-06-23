@@ -34,3 +34,5 @@ _ReSharper*/
 *.o
 *.status
 src/Makefile
+src/config.h
+src/stamp-h1

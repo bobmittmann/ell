@@ -118,6 +118,11 @@ extern int lastsymnum;
 #define forall_rules(r)   for(r = first_rule; r != NULL; r = r->next_rule)
 #define forall_symbols(s) for(s = first_sym; s != NULL; s = s->next_sym)
 
+/* Generate debug structures */
+#define OPT_GEN_DEBUG  1
+/* GEnerate action table */
+#define OPT_GEN_ACTTAB 2
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -137,9 +142,11 @@ int BitVecAdd(BITVEC x, int pos);
 
 void WriteRecursiveParser(FILE *fp, char * pname, FILE * fh, char *hname);
 
-void write_compact_c(FILE * fp, char * prefix, char * hname, bool debug);
+void write_compact_c(FILE * fp, char * prefix, char * hname, 
+					 unsigned int options);
 
-void write_compact_h(FILE * fp, char * prefix, char * hname, bool debug); 
+void write_compact_h(FILE * fp, char * prefix, char * hname, 
+					 unsigned int options);
 
 
 #ifdef __cplusplus

@@ -80,8 +80,42 @@ void write_sym_tab(FILE * fp, char * prefix)
 	fprintf(fp, "};\n\n");
 }
 
-void write_compact_c(FILE * fp, char * prefix, char * hname, bool debug)
+void write_action_tab(FILE * fp, char * prefix) 
+{    
+    SYMPTR sp;       
+
+    fprintf(fp, "\n/* Syntax action callback lookup table */\n");	
+	fprintf(fp, "int (* const %s_ll_op[])(void *) = {\n", prefix);
+	forall_symbols(sp) {
+		char s[256];
+		if (sp->kind == ACTION) {
+			fprintf(fp, "\t[ACTION(A_%s)] = ", strupper(s, sp->symtext));
+			fprintf(fp, "%s,\n ", sp->symtext);
+		}
+	}
+	
+	fprintf(fp, "};\n\n");
+}
+
+void write_action_decl(FILE * fp, char * prefix) 
+{    
+    SYMPTR sp;       
+
+    fprintf(fp, "\n/* Syntax action callbacks */\n");	
+
+	forall_symbols(sp) {
+		if (sp->kind == ACTION)
+			fprintf(fp, "extern int %s(void * arg);\n", sp->symtext);
+	}
+	
+	fprintf(fp, "\n");
+}
+
+void write_compact_c(FILE * fp, char * prefix, char * hname, 
+					 unsigned int options)
 {	
+	bool debug = options & OPT_GEN_DEBUG ? true : false;
+	bool acttab = options & OPT_GEN_ACTTAB ? true : false;
 	RULEPTR rp;
 	SYMPTR sp,tp; 
 	BITVEC  set = BitVecNew();
@@ -290,14 +324,22 @@ void write_compact_c(FILE * fp, char * prefix, char * hname, bool debug)
 		fprintf(fp, "}\n\n");
     }    
 
+	if (acttab) {
+		write_action_decl(fp, prefix);
+		write_action_tab(fp, prefix);
+	}
+
 	if (debug)
 		write_sym_tab(fp, prefix);
 
 	free(set);
 }
 
-void write_compact_h(FILE * fp, char * prefix, char * hname, bool debug) 
+void write_compact_h(FILE * fp, char * prefix, char * hname, 
+					 unsigned int options)
 {    
+	bool debug = options & OPT_GEN_DEBUG ? true : false;
+	bool acttab = options & OPT_GEN_ACTTAB ? true : false;
 	char s[256];
 	char h[256];
     SYMPTR sp;       
@@ -371,6 +413,9 @@ void write_compact_h(FILE * fp, char * prefix, char * hname, bool debug)
 	if (debug)
 		fprintf(fp, "extern const const char * const %s_ll_sym[];\n\n", 
 				prefix);
+
+	if (acttab)
+		fprintf(fp, "extern int (* const %s_ll_op[])(void *);\n\n", prefix);
 
 	fprintf(fp, "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n");
 
